@@ -67,7 +67,7 @@ def log_request_info():
 def load_api_keys(filename=None):
     """Load valid API keys from a file."""
     if not filename:
-        filename = current_app.config.get("API_KEYS_FILE")
+        filename = os.getenv("API_KEYS_FILE", "api_keys.txt")
     try:
         current_app.logger.info("Loading API keys from %s", filename)
         with open(filename, "r") as f:
