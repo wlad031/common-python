@@ -1,3 +1,4 @@
+import os
 import logging
 from flask import Blueprint, jsonify, request, current_app
 from functools import wraps
@@ -63,11 +64,14 @@ def log_request_info():
         current_app.logger.info("Request Sender: %s", request.remote_addr)
 
 
-def load_api_keys(filename="keys.txt"):
+def load_api_keys(filename=None):
     """Load valid API keys from a file."""
+    if not filename:
+        filename = current_app.config.get("API_KEYS_FILE")
     try:
         with open(filename, "r") as f:
             keys = [line.strip() for line in f if line.strip()]
         return keys
     except FileNotFoundError:
+        current_app.logger.error("API keys file not found: %s", filename)
         return []
