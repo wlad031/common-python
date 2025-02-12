@@ -4,7 +4,17 @@ setup(
     name="common_python",
     version="0.1.0",
     packages=find_packages(),
-    install_requires=[],
     python_requires=">=3.7",
+    install_requires=[
+        'Flask',
+        'PyYAML',
+    ],
+    author='Vladislav Gerasimov',
+    author_email='me@vgerasimov.dev',
+    description='Common utilities for my Python projects',
+    url='https://github.com/wlad031/common-python',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+    ],
 )
 
