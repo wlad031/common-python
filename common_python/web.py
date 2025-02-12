@@ -69,8 +69,10 @@ def load_api_keys(filename=None):
     if not filename:
         filename = current_app.config.get("API_KEYS_FILE")
     try:
+        current_app.logger.info("Loading API keys from %s", filename)
         with open(filename, "r") as f:
             keys = [line.strip() for line in f if line.strip()]
+            current_app.logger.info("Loaded %d API keys", len(keys))
         return keys
     except FileNotFoundError:
         current_app.logger.error("API keys file not found: %s", filename)
