@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from flask import Blueprint, jsonify, request, current_app
 from functools import wraps
 
@@ -31,15 +32,34 @@ def configure_logging(app):
 
 
 def require_api_key(f):
-    """Decorator that requires the X-Api-Key header to be valid."""
+    """Decorator that requires token authorization."""
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        api_key = request.headers.get("X-Api-Key")
+        cfg = current_app.config.get("auth_config", None)
+        if not cfg:
+            cfg = load_auth_config()
+        auth_enabled, auth_keys = cfg
+        if not auth_enabled:
+            return f(*args, **kwargs)
+        api_key = None
+        token = request.headers.get("Authorization")
+        if token:
+            parts = token.split(" ")
+            if len(parts) != 2:
+                return jsonify({"status": "error", "message": "Invalid token"}), 401
+            if parts[0] != "token":
+                return jsonify({"status": "error", "message": "Invalid token"}), 401
+            api_key = parts[1]
+        else:
+            api_key = request.headers.get("X-Api-Key")
+            if api_key:
+                current_app.logger.warning(
+                    "Using deprecated X-Api-Key header, use Authorization header instead"
+                )
         if not api_key:
-            return jsonify({"status": "error", "message": "Missing API key"}), 401
-        valid_keys = load_api_keys()
-        if api_key not in valid_keys:
+            return jsonify({"status": "error", "message": "Missing token"}), 401
+        if api_key not in auth_keys:
             return jsonify({"status": "error", "message": "Invalid API key"}), 401
         return f(*args, **kwargs)
 
@@ -64,10 +84,20 @@ def log_request_info():
         current_app.logger.info("Request Sender: %s", request.remote_addr)
 
 
-def load_api_keys(filename=None):
+def load_auth_config():
+    """Load auth configuration from environment variables."""
+    result = False, []
+    if not os.getenv("AUTH_ENABLED", False):
+        current_app.logger.warning("Auth disabled")
+    else:
+        api_keys_file = os.getenv("API_KEYS_FILE", "api_keys.txt")
+        result = True, load_api_keys(api_keys_file)
+    current_app.config["auth_config"] = result
+    return result
+
+
+def load_api_keys(filename):
     """Load valid API keys from a file."""
-    if not filename:
-        filename = os.getenv("API_KEYS_FILE", "api_keys.txt")
     try:
         current_app.logger.info("Loading API keys from %s", filename)
         with open(filename, "r") as f:
