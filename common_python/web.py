@@ -1,6 +1,5 @@
 import os
 import logging
-import re
 from flask import Blueprint, jsonify, request, current_app
 from functools import wraps
 
@@ -47,19 +46,24 @@ def require_api_key(f):
         if token:
             parts = token.split(" ")
             if len(parts) != 2:
+                current_app.logger.debug(
+                    "Invalid token (not 2 space-separated parts): %s", token
+                )
                 return jsonify({"status": "error", "message": "Invalid token"}), 401
             if parts[0] != "token":
+                current_app.logger.debug("Invalid token (invalid prefix): %s", token)
                 return jsonify({"status": "error", "message": "Invalid token"}), 401
             api_key = parts[1]
         else:
             api_key = request.headers.get("X-Api-Key")
             if api_key:
                 current_app.logger.warning(
-                    "Using deprecated X-Api-Key header, use Authorization header instead"
+                    "Using deprecated X-Api-Key header, Authorization header should be used instead"
                 )
         if not api_key:
-            return jsonify({"status": "error", "message": "Missing token"}), 401
+            return jsonify({"status": "error", "message": "Missing API key"}), 401
         if api_key not in auth_keys:
+            current_app.logger.error("Invalid API key: %s", api_key)
             return jsonify({"status": "error", "message": "Invalid API key"}), 401
         return f(*args, **kwargs)
 
