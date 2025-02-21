@@ -1,8 +1,8 @@
 # common-python
 
-[![License](https://img.shields.io/github/license/wlad031/shoutrrr-web)](https://github.com/wlad031/shoutrrr-web/blob/main/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/wlad031/shoutrrr-web)](https://github.com/wlad031/shoutrrr-web/issues)
-[![GitHub release](https://img.shields.io/github/v/release/wlad031/shoutrrr-web)](https://github.com/wlad031/shoutrrr-web/releases)
+[![License](https://img.shields.io/github/license/wlad031/common-python)](https://github.com/wlad031/common-python/blob/master/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/wlad031/common-python)](https://github.com/wlad031/common-python/issues)
+[![GitHub release](https://img.shields.io/github/v/release/wlad031/common-python)](https://github.com/wlad031/common-python/releases)
 
 This is just a collecton of components I use across my Python projects.
 
