@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1](https://github.com/wlad031/common-python/releases/tag/v0.2.1) - 2025-02-21
+
+This release doesn't have any significant changes, just some more logging for authentication debugging.
+
 ## [0.2.0](https://github.com/wlad031/common-python/releases/tag/v0.2.0) - 2025-02-18
 
 ### Added
