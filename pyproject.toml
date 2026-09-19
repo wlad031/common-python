@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "common-python"
-version = "0.3.1"
+version = "0.4.0"
 description = "Small, dependency-light utilities shared by personal Python services."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,6 +15,8 @@ classifiers = ["Programming Language :: Python :: 3"]
 [project.optional-dependencies]
 flask = ["Flask>=3.1"]
 lua = ["lupa>=2.5"]
+rich = ["rich>=13"]
+textual = ["textual>=0.80"]
 
 [dependency-groups]
 dev = ["ruff>=0.12.0"]
