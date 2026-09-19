@@ -10,14 +10,14 @@ Small, dependency-light utilities shared by personal Python services. Keep modul
 Pin consumers to a release tag:
 
 ```bash
-uv add "common-python @ git+https://github.com/wlad031/common-python.git@v0.3.0"
+uv add "common-python @ git+https://github.com/wlad031/common-python.git@v0.3.1"
 ```
 
 Core install has no third-party dependencies. Optional features:
 
 ```bash
-uv add "common-python[flask] @ git+https://github.com/wlad031/common-python.git@v0.3.0"
-uv add "common-python[lua] @ git+https://github.com/wlad031/common-python.git@v0.3.0"
+uv add "common-python[flask] @ git+https://github.com/wlad031/common-python.git@v0.3.1"
+uv add "common-python[lua] @ git+https://github.com/wlad031/common-python.git@v0.3.1"
 ```
 
 ## Modules
@@ -26,6 +26,7 @@ uv add "common-python[lua] @ git+https://github.com/wlad031/common-python.git@v0
 - `common_python.http` — stdlib JSON HTTP requests and errors
 - `common_python.prometheus` — label rendering and stdlib exporter handler
 - `common_python.web` — optional Flask health, request logging, API-key auth
+- `common_python.lua` — optional Python/Lua table conversion
 
 ## Development
 
