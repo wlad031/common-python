@@ -1,113 +1,111 @@
-import os
+import hmac
 import logging
-from flask import Blueprint, jsonify, request, current_app
+import time
+from collections.abc import Callable
 from functools import wraps
 
+from flask import Blueprint, Flask, Response, current_app, g, jsonify, request
 
-class HealthFilter(logging.Filter):
-    def filter(self, record):
-        return "/health" not in record.getMessage()
-
-
-def configure_logging(app):
-    """Configure logging for Flask and werkzeug."""
-    werkzeug_logger = logging.getLogger("werkzeug")
-    werkzeug_logger.setLevel(logging.ERROR)
-    health_filter = HealthFilter()
-    for handler in werkzeug_logger.handlers:
-        handler.addFilter(health_filter)
-    flask_logger = logging.getLogger("flask-requests")
-    flask_logger.setLevel(logging.INFO)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.addFilter(health_filter)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    console_handler.setFormatter(formatter)
-    flask_logger.addHandler(console_handler)
-    app.logger.handlers = [console_handler]
-    app.logger.setLevel(logging.INFO)
+from .env import env_bool
 
 
-def require_api_key(f):
-    """Decorator that requires token authorization."""
+def configure_logging(app: Flask) -> None:
+    """Configure request logging with method, path, response status, and latency."""
+    logger = app.logger
+    logger.setLevel(logging.INFO)
+    if not any(
+        getattr(handler, "_common_python", False) for handler in logger.handlers
+    ):
+        handler = logging.StreamHandler()
+        handler._common_python = True  # type: ignore[attr-defined]
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logger.handlers = [handler]
 
-    @wraps(f)
+    @app.before_request
+    def start_request_timer() -> None:
+        g.common_python_request_started = time.perf_counter()
+
+    @app.after_request
+    def log_response(response: Response) -> Response:
+        if request.path != "/health":
+            started = getattr(g, "common_python_request_started", time.perf_counter())
+            latency_ms = (time.perf_counter() - started) * 1000
+            logger.info(
+                "%s %s status=%d latency_ms=%.1f remote=%s",
+                request.method,
+                request.path,
+                response.status_code,
+                latency_ms,
+                request.remote_addr,
+            )
+        return response
+
+
+def require_api_key(function: Callable) -> Callable:
+    """Require a configured API key using constant-time comparison."""
+
+    @wraps(function)
     def decorated(*args, **kwargs):
-        cfg = current_app.config.get("auth_config", None)
-        if not cfg:
-            cfg = load_auth_config()
-        auth_enabled, auth_keys = cfg
+        auth_enabled, auth_keys = (
+            current_app.config.get("auth_config") or load_auth_config()
+        )
         if not auth_enabled:
-            return f(*args, **kwargs)
-        api_key = None
-        token = request.headers.get("Authorization")
-        if token:
-            parts = token.split(" ")
-            if len(parts) != 2:
-                current_app.logger.debug(
-                    "Invalid token (not 2 space-separated parts): %s", token
-                )
-                return jsonify({"status": "error", "message": "Invalid token"}), 401
-            if parts[0] != "token":
-                current_app.logger.debug("Invalid token (invalid prefix): %s", token)
-                return jsonify({"status": "error", "message": "Invalid token"}), 401
-            api_key = parts[1]
-        else:
-            api_key = request.headers.get("X-Api-Key")
-            if api_key:
-                current_app.logger.warning(
-                    "Using deprecated X-Api-Key header, Authorization header should be used instead"
-                )
-        if not api_key:
+            return function(*args, **kwargs)
+        api_key = _request_api_key()
+        if api_key is None:
             return jsonify({"status": "error", "message": "Missing API key"}), 401
-        if api_key not in auth_keys:
-            current_app.logger.error("Invalid API key: %s", api_key)
+        if not any(hmac.compare_digest(api_key, expected) for expected in auth_keys):
             return jsonify({"status": "error", "message": "Invalid API key"}), 401
-        return f(*args, **kwargs)
+        return function(*args, **kwargs)
 
     return decorated
 
 
-def create_health_blueprint():
+def create_health_blueprint() -> Blueprint:
     """Return a Flask Blueprint that provides a /health endpoint."""
-    health_bp = Blueprint("health", __name__)
+    health_blueprint = Blueprint("health", __name__)
 
-    @health_bp.route("/health", methods=["GET"])
+    @health_blueprint.get("/health")
     def health():
         return jsonify({"status": "healthy"}), 200
 
-    return health_bp
+    return health_blueprint
 
 
-def log_request_info():
-    """Log request information excluding the /health endpoint."""
-    if request.path != "/health":
-        current_app.logger.info("Request Body: %s", request.get_data(as_text=True))
-        current_app.logger.info("Request Sender: %s", request.remote_addr)
+def log_request_info() -> None:
+    """Compatibility no-op; configure_logging now logs after response completion."""
 
 
-def load_auth_config():
-    """Load auth configuration from environment variables."""
-    result = False, []
-    if not os.getenv("AUTH_ENABLED", False):
-        current_app.logger.warning("Auth disabled")
+def load_auth_config() -> tuple[bool, list[str]]:
+    """Load optional API-key authentication settings from environment variables."""
+    if not env_bool("AUTH_ENABLED", default=False):
+        result = False, []
     else:
-        api_keys_file = os.getenv("API_KEYS_FILE", "api_keys.txt")
-        result = True, load_api_keys(api_keys_file)
+        result = (
+            True,
+            load_api_keys(current_app.config.get("API_KEYS_FILE", "api_keys.txt")),
+        )
     current_app.config["auth_config"] = result
     return result
 
 
-def load_api_keys(filename):
+def load_api_keys(filename: str) -> list[str]:
     """Load valid API keys from a file."""
     try:
-        current_app.logger.info("Loading API keys from %s", filename)
-        with open(filename, "r") as f:
-            keys = [line.strip() for line in f if line.strip()]
-            current_app.logger.info("Loaded %d API keys", len(keys))
-        return keys
+        with open(filename, encoding="utf-8") as file:
+            return [line.strip() for line in file if line.strip()]
     except FileNotFoundError:
         current_app.logger.error("API keys file not found: %s", filename)
         return []
+
+
+def _request_api_key() -> str | None:
+    authorization = request.headers.get("Authorization", "")
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme != "token" or not token or " " in token:
+            return None
+        return token
+    return request.headers.get("X-Api-Key")
