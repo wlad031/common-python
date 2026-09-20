@@ -1,4 +1,5 @@
 """XDG configuration loading for command-line and TUI applications."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -39,11 +40,29 @@ def load_config(
     With no explicit filename, searches ``config.yml``, ``config.yaml``, then
     ``config.toml``. Missing config returns a copy of ``defaults``.
     """
-    config = deepcopy(dict(defaults or {}))
     path = find_config_path(app_name, filename)
-    if path is None:
+    return (
+        load_config_file(path, defaults=defaults)
+        if path
+        else deepcopy(dict(defaults or {}))
+    )
+
+
+def load_config_file(
+    path: str | Path,
+    *,
+    defaults: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Load YAML or TOML config from an explicit path.
+
+    Missing files return a copy of ``defaults``. Use this for ``--config``
+    options; use :func:`load_config` for standard XDG app configuration.
+    """
+    config = deepcopy(dict(defaults or {}))
+    config_path = Path(path)
+    if not config_path.is_file():
         return config
-    return _merge(config, _load_mapping(path))
+    return _merge(config, _load_mapping(config_path))
 
 
 def keybindings(config: Mapping[str, Any], section: str = "keys") -> dict[str, str]:

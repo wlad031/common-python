@@ -4,7 +4,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from common_python.config import find_config_path, keybindings, load_config
+from common_python.config import (
+    find_config_path,
+    keybindings,
+    load_config,
+    load_config_file,
+)
 
 
 class ConfigTest(unittest.TestCase):
@@ -41,6 +46,21 @@ class ConfigTest(unittest.TestCase):
                     load_config("missing", defaults={"value": "default"}),
                     {"value": "default"},
                 )
+
+    def test_loads_explicit_config_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_file = Path(directory) / "custom.toml"
+            config_file.write_text('value = "configured"\n')
+            self.assertEqual(
+                load_config_file(config_file, defaults={"other": True}),
+                {"value": "configured", "other": True},
+            )
+            self.assertEqual(
+                load_config_file(
+                    config_file.with_name("missing.toml"), defaults={"x": 1}
+                ),
+                {"x": 1},
+            )
 
     def test_keybindings_requires_string_mapping(self):
         self.assertEqual(

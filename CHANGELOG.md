@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1](https://github.com/wlad031/common-python/releases/tag/v0.5.1)
+
+### Added
+- Explicit-path config loading for CLI `--config` options.
+- Safe, minimal `.env` loading.
+
 ## [0.5.0](https://github.com/wlad031/common-python/releases/tag/v0.5.0)
 
 ### Added

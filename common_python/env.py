@@ -37,6 +37,42 @@ def env_float(name: str, default: float | None = None) -> float:
         raise ValueError(f"{name} must be a number") from exc
 
 
+def load_dotenv(path: str = ".env", *, override: bool = False) -> None:
+    """Load simple ``KEY=VALUE`` entries without shell evaluation.
+
+    Supports optional ``export`` prefixes and single/double quoted values.
+    Existing environment variables win unless ``override`` is true.
+    """
+    try:
+        with open(path, encoding="utf-8") as file:
+            lines = file
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[7:].lstrip()
+                if "=" not in line:
+                    continue
+                name, value = line.split("=", 1)
+                name = name.strip()
+                value = value.strip()
+                if not name:
+                    continue
+                if (
+                    len(value) >= 2
+                    and value[:1] == value[-1:]
+                    and value[:1] in {"'", '"'}
+                ):
+                    value = value[1:-1]
+                if override:
+                    os.environ[name] = value
+                else:
+                    os.environ.setdefault(name, value)
+    except FileNotFoundError:
+        return
+
+
 def required_env(name: str) -> str:
     """Read a non-empty environment variable."""
     value = os.getenv(name, "").strip()

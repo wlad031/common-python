@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "common-python"
-version = "0.5.0"
+version = "0.5.1"
 description = "Small, dependency-light utilities shared by personal Python services."
 readme = "README.md"
 requires-python = ">=3.10"
