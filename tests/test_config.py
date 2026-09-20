@@ -9,6 +9,7 @@ from common_python.config import (
     keybindings,
     load_config,
     load_config_file,
+    load_config_files,
 )
 
 
@@ -60,6 +61,22 @@ class ConfigTest(unittest.TestCase):
                     config_file.with_name("missing.toml"), defaults={"x": 1}
                 ),
                 {"x": 1},
+            )
+
+    def test_merges_config_files_in_precedence_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            low = Path(directory) / "low.toml"
+            high = Path(directory) / "high.toml"
+            low.write_text('[ui]\ntheme = "dark"\n[ui.keys]\nrefresh = "r"\n')
+            high.write_text('[ui.keys]\nrefresh = "ctrl+r"\nquit = "q"\n')
+            self.assertEqual(
+                load_config_files([low, high]),
+                {
+                    "ui": {
+                        "theme": "dark",
+                        "keys": {"refresh": "ctrl+r", "quit": "q"},
+                    }
+                },
             )
 
     def test_keybindings_requires_string_mapping(self):

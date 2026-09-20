@@ -4,6 +4,7 @@ from .config import (
     keybindings,
     load_config,
     load_config_file,
+    load_config_files,
 )
 from .env import env_bool, env_float, env_int, load_dotenv, required_env
 from .http import HttpRequestError, request_json
@@ -21,6 +22,7 @@ __all__ = [
     "keybindings",
     "load_config",
     "load_config_file",
+    "load_config_files",
     "load_dotenv",
     "PrometheusHandler",
     "create_prometheus_handler",

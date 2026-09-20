@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -48,6 +48,24 @@ def load_config(
     )
 
 
+def load_config_files(
+    paths: Iterable[str | Path],
+    *,
+    defaults: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Load and deep-merge config files in precedence order.
+
+    Later paths override earlier paths. Missing files are ignored. This supports
+    system, user, profile, and explicit-override configuration layers.
+    """
+    config = deepcopy(dict(defaults or {}))
+    for path in paths:
+        config_path = Path(path)
+        if config_path.is_file():
+            config = _merge(config, _load_mapping(config_path))
+    return config
+
+
 def load_config_file(
     path: str | Path,
     *,
@@ -58,11 +76,7 @@ def load_config_file(
     Missing files return a copy of ``defaults``. Use this for ``--config``
     options; use :func:`load_config` for standard XDG app configuration.
     """
-    config = deepcopy(dict(defaults or {}))
-    config_path = Path(path)
-    if not config_path.is_file():
-        return config
-    return _merge(config, _load_mapping(config_path))
+    return load_config_files((path,), defaults=defaults)
 
 
 def keybindings(config: Mapping[str, Any], section: str = "keys") -> dict[str, str]:

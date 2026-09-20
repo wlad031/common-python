@@ -10,15 +10,15 @@ Small, dependency-light utilities shared by personal Python services. Keep modul
 Pin consumers to a release tag:
 
 ```bash
-uv add "common-python @ git+https://github.com/wlad031/common-python.git@v0.5.1"
+uv add "common-python @ git+https://github.com/wlad031/common-python.git@v0.5.2"
 ```
 
 Core install has no third-party dependencies. Optional features:
 
 ```bash
-uv add "common-python[flask] @ git+https://github.com/wlad031/common-python.git@v0.5.1"
-uv add "common-python[lua] @ git+https://github.com/wlad031/common-python.git@v0.5.1"
-uv add "common-python[config] @ git+https://github.com/wlad031/common-python.git@v0.5.1"
+uv add "common-python[flask] @ git+https://github.com/wlad031/common-python.git@v0.5.2"
+uv add "common-python[lua] @ git+https://github.com/wlad031/common-python.git@v0.5.2"
+uv add "common-python[config] @ git+https://github.com/wlad031/common-python.git@v0.5.2"
 ```
 
 ## XDG app config and TUI keys
@@ -35,7 +35,9 @@ keys:
 ```
 
 Use `load_config_file(path, defaults=...)` for explicit CLI config paths such
-as `--config`. Use `load_dotenv()` for simple, non-shell-evaluated `.env` files.
+as `--config`, or `load_config_files(paths, defaults=...)` for ordered system,
+user, profile, and explicit-override layers. Use `load_dotenv()` for simple,
+non-shell-evaluated `.env` files.
 
 For `CommonApp` subclasses, set `CONFIG_APP_NAME` and give each configurable
 `Binding` a stable `id`. Config `keys` maps binding IDs to replacement keys.
