@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/wlad031/common-python/releases/tag/v0.5.0)
+
+### Added
+- XDG YAML/TOML config loading with deep-merged defaults.
+- Configurable Textual binding IDs via `CommonApp`.
+
 ## [0.2.1](https://github.com/wlad031/common-python/releases/tag/v0.2.1) - 2025-02-21
 
 This release doesn't have any significant changes, just some more logging for authentication debugging.

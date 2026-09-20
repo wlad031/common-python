@@ -1,3 +1,4 @@
+from .config import config_dir, find_config_path, keybindings, load_config
 from .env import env_bool, env_float, env_int, required_env
 from .http import HttpRequestError, request_json
 from .prometheus import (
@@ -9,6 +10,10 @@ from .prometheus import (
 
 __all__ = [
     "HttpRequestError",
+    "config_dir",
+    "find_config_path",
+    "keybindings",
+    "load_config",
     "PrometheusHandler",
     "create_prometheus_handler",
     "env_bool",
