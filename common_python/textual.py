@@ -11,6 +11,21 @@ from textual.widgets import Button, DataTable, Label
 
 from .config import keybindings, load_config
 
+MANAGED_TABLE_CSS = """
+DataTable { height: 1fr; background: transparent; }
+DataTable > .datatable--header {
+    color: magenta;
+    text-style: bold;
+    background: transparent;
+}
+DataTable > .datatable--cursor,
+DataTable:focus > .datatable--cursor {
+    background: #202020;
+    color: #eeeeee;
+    text-style: none;
+}
+"""
+
 
 @dataclass(frozen=True)
 class TableColumn:
