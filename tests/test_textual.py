@@ -2,12 +2,50 @@ import unittest
 
 from textual.app import App, ComposeResult
 
-from common_python.textual import ManagedDataTable, TableColumn, TableRow, _table_cell
+from common_python.textual import (
+    ManagedDataTable,
+    TableColumn,
+    TableRow,
+    _table_cell,
+    configured_table_columns,
+)
 
 
 class TableApp(App[None]):
     def compose(self) -> ComposeResult:
         yield ManagedDataTable(id="table")
+
+
+class ConfiguredTableColumnsTests(unittest.TestCase):
+    defaults = (
+        TableColumn("name", "Name"),
+        TableColumn("state", "State", 8),
+        TableColumn("detail", "Detail"),
+    )
+
+    def test_configures_order_visibility_label_and_width(self) -> None:
+        columns = configured_table_columns(
+            {
+                "columns": [
+                    {"key": "state", "label": "Status", "width": 10},
+                    {"key": "name"},
+                    {"key": "detail", "visible": False},
+                ]
+            },
+            self.defaults,
+        )
+        self.assertEqual(
+            columns,
+            (TableColumn("state", "Status", 10), TableColumn("name", "Name")),
+        )
+
+    def test_rejects_invalid_or_empty_column_config(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid column key"):
+            configured_table_columns({"columns": [{"key": "missing"}]}, self.defaults)
+        with self.assertRaisesRegex(ValueError, "at least one"):
+            configured_table_columns(
+                {"columns": [{"key": "name", "visible": False}]}, self.defaults
+            )
 
 
 class ManagedDataTableTests(unittest.IsolatedAsyncioTestCase):
@@ -24,8 +62,8 @@ class ManagedDataTableTests(unittest.IsolatedAsyncioTestCase):
             )
             table.set_rows(
                 (
-                    TableRow("one", ("alpha", "UP"), "first"),
-                    TableRow("two", ("bravo", "DOWN"), "second"),
+                    TableRow("one", {"name": "alpha", "state": "UP"}, "first"),
+                    TableRow("two", {"name": "bravo", "state": "DOWN"}, "second"),
                 )
             )
 
@@ -38,8 +76,8 @@ class ManagedDataTableTests(unittest.IsolatedAsyncioTestCase):
 
             table.set_rows(
                 (
-                    TableRow("two", ("bravo", "DOWN"), "second"),
-                    TableRow("one", ("alpha", "UP"), "first"),
+                    TableRow("two", {"name": "bravo", "state": "DOWN"}, "second"),
+                    TableRow("one", {"name": "alpha", "state": "UP"}, "first"),
                 )
             )
             self.assertEqual(table.selected_key, "two")

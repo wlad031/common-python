@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
@@ -39,11 +40,57 @@ class TableColumn:
 
 @dataclass(frozen=True)
 class TableRow:
-    """Application data rendered by :class:`ManagedDataTable`."""
+    """Application data rendered by :class:`ManagedDataTable`.
+
+    ``values`` maps column keys to plain text. Table chooses visible cells.
+    """
 
     key: str
-    cells: tuple[str, ...]
+    values: Mapping[str, str]
     data: Any = None
+
+
+def configured_table_columns(
+    config: Mapping[str, Any], defaults: tuple[TableColumn, ...]
+) -> tuple[TableColumn, ...]:
+    """Build ordered visible columns from ``columns`` config.
+
+    Each item is ``{key, label?, width?, visible?}``. Unknown keys, invalid
+    widths, duplicate keys, and configs hiding every column fail fast.
+    """
+    definitions = {column.key: column for column in defaults}
+    raw_columns = config.get("columns", [
+        {"key": column.key} for column in defaults
+    ])
+    if not isinstance(raw_columns, list):
+        raise ValueError("columns config must be a list")
+
+    columns: list[TableColumn] = []
+    seen: set[str] = set()
+    for raw in raw_columns:
+        if not isinstance(raw, Mapping) or not isinstance(raw.get("key"), str):
+            raise ValueError(f"invalid column config: {raw!r}")
+        key = raw["key"]
+        if key not in definitions or key in seen:
+            raise ValueError(f"invalid column key: {key}")
+        seen.add(key)
+        default = definitions[key]
+        visible = raw.get("visible", True)
+        width = raw.get("width", default.width)
+        if not isinstance(visible, bool):
+            raise ValueError(f"column visibility must be boolean: {key}")
+        invalid_width = (
+            width is not None
+            and (not isinstance(width, int) or isinstance(width, bool) or width < 1)
+        )
+        if invalid_width:
+            raise ValueError(f"column width must be positive integer: {key}")
+        if visible:
+            label = str(raw.get("label", default.label))
+            columns.append(TableColumn(key, label, width))
+    if not columns:
+        raise ValueError("config must enable at least one column")
+    return tuple(columns)
 
 
 class ManagedDataTable(DataTable):
@@ -72,6 +119,7 @@ class ManagedDataTable(DataTable):
         super().__init__(*args, **kwargs)
         self.selected_key: str | None = None
         self._row_data: dict[str, Any] = {}
+        self._columns: tuple[TableColumn, ...] = ()
 
     @property
     def selected_data(self) -> Any:
@@ -81,6 +129,7 @@ class ManagedDataTable(DataTable):
     def set_columns(self, columns: tuple[TableColumn, ...]) -> None:
         """Replace columns. Call :meth:`set_rows` afterwards to populate table."""
         self.clear(columns=True)
+        self._columns = columns
         for column in columns:
             self.add_column(column.label, key=column.key, width=column.width)
 
@@ -91,7 +140,10 @@ class ManagedDataTable(DataTable):
         self._row_data = {row.key: row.data for row in rows}
         keys: list[str] = []
         for row in rows:
-            cells = tuple(_table_cell(value, row.data is None) for value in row.cells)
+            cells = tuple(
+                _table_cell(row.values.get(column.key, ""), row.data is None)
+                for column in self._columns
+            )
             self.add_row(*cells, key=row.key)
             keys.append(row.key)
         target = previous if previous in self._row_data else (keys[0] if keys else None)
