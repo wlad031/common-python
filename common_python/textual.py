@@ -1,14 +1,99 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Container, Middle
 from textual.screen import ModalScreen
-from textual.widgets import Button, Label
+from textual.widgets import Button, DataTable, Label
 
 from .config import keybindings, load_config
+
+
+@dataclass(frozen=True)
+class TableColumn:
+    """Presentation metadata for one managed table column."""
+
+    key: str
+    label: str
+    width: int | None = None
+
+
+@dataclass(frozen=True)
+class TableRow:
+    """Application data rendered by :class:`ManagedDataTable`."""
+
+    key: str
+    cells: tuple[Any, ...]
+    data: Any = None
+
+
+class ManagedDataTable(DataTable):
+    """DataTable with stable selection, row payloads, and j/k navigation."""
+
+    BINDINGS = [
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
+    ]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.selected_key: str | None = None
+        self._row_data: dict[str, Any] = {}
+
+    @property
+    def selected_data(self) -> Any:
+        """Payload associated with currently highlighted row, if any."""
+        return self._row_data.get(self.selected_key) if self.selected_key else None
+
+    def set_columns(self, columns: tuple[TableColumn, ...]) -> None:
+        """Replace columns. Call :meth:`set_rows` afterwards to populate table."""
+        self.clear(columns=True)
+        for column in columns:
+            self.add_column(column.label, key=column.key, width=column.width)
+
+    def set_rows(self, rows: tuple[TableRow, ...]) -> None:
+        """Replace rows while retaining highlighted row by stable key."""
+        previous = self.selected_key or self._current_row_key()
+        self.clear()
+        self._row_data = {row.key: row.data for row in rows}
+        keys: list[str] = []
+        for row in rows:
+            self.add_row(*row.cells, key=row.key)
+            keys.append(row.key)
+        target = previous if previous in self._row_data else (keys[0] if keys else None)
+        self.selected_key = target
+        if target is not None:
+            self.move_cursor(row=keys.index(target), animate=False, scroll=False)
+
+    def action_cursor_down(self) -> None:
+        super().action_cursor_down()
+        self._sync_selected_key()
+
+    def action_cursor_up(self) -> None:
+        super().action_cursor_up()
+        self._sync_selected_key()
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if str(event.row_key.value) == self._current_row_key():
+            self.selected_key = str(event.row_key.value)
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        self.selected_key = str(event.row_key.value)
+
+    def _sync_selected_key(self) -> None:
+        self.selected_key = self._current_row_key()
+
+    def _current_row_key(self) -> str | None:
+        if self.row_count == 0 or self.cursor_row is None:
+            return None
+        try:
+            cell_key = self.coordinate_to_cell_key(self.cursor_coordinate)
+            return str(cell_key.row_key.value)
+        except Exception:
+            return None
 
 
 class CommonApp(App):
