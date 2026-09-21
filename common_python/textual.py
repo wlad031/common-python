@@ -139,7 +139,7 @@ def _table_cell(value: str, is_group: bool) -> Text:
         return Text(value, style="yellow")
     if normalized.startswith("exited ("):
         code = normalized.removeprefix("exited (").removesuffix(")")
-        style = "grey70 on grey23" if code == "0" else "bold red on grey23"
+        style = "grey70" if code == "0" else "bold red"
         return Text(value, style=style)
     return Text(value)
 
