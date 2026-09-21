@@ -29,16 +29,20 @@ class Command:
     shell: str | None = None
 
     def run(self, values: Mapping[str, str] | None = None) -> str:
-        values = values or {}
         if self.argv is not None:
+            argv = (
+                list(self.argv)
+                if values is None
+                else [part.format_map(values) for part in self.argv]
+            )
             return subprocess.run(
-                [part.format_map(values) for part in self.argv],
+                argv,
                 check=True,
                 text=True,
                 capture_output=True,
             ).stdout
         assert self.shell is not None
-        quoted = {key: shlex.quote(value) for key, value in values.items()}
+        quoted = {key: shlex.quote(value) for key, value in (values or {}).items()}
         return subprocess.run(
             self.shell.format_map(quoted),
             shell=True,
