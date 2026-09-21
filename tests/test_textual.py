@@ -1,6 +1,5 @@
 import unittest
 
-from rich.text import Text
 from textual.app import App, ComposeResult
 
 from common_python.textual import ManagedDataTable, TableColumn, TableRow
@@ -21,29 +20,22 @@ class ManagedDataTableTests(unittest.IsolatedAsyncioTestCase):
             )
             table.set_rows(
                 (
-                    TableRow(
-                        "one", (Text("alpha"), Text("UP", style="green")), "first"
-                    ),
-                    TableRow(
-                        "two", (Text("bravo"), Text("DOWN", style="red")), "second"
-                    ),
+                    TableRow("one", ("alpha", "UP"), "first"),
+                    TableRow("two", ("bravo", "DOWN"), "second"),
                 )
             )
 
             self.assertEqual(table.selected_key, "one")
             self.assertEqual(table.selected_data, "first")
+            self.assertEqual(table.get_cell_at((0, 1)).style, "green")
             await pilot.press("j")
             self.assertEqual(table.selected_key, "two")
             self.assertEqual(table.selected_data, "second")
 
             table.set_rows(
                 (
-                    TableRow(
-                        "two", (Text("bravo"), Text("DOWN", style="red")), "second"
-                    ),
-                    TableRow(
-                        "one", (Text("alpha"), Text("UP", style="green")), "first"
-                    ),
+                    TableRow("two", ("bravo", "DOWN"), "second"),
+                    TableRow("one", ("alpha", "UP"), "first"),
                 )
             )
             self.assertEqual(table.selected_key, "two")

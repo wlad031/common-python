@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Container, Middle
@@ -41,7 +42,7 @@ class TableRow:
     """Application data rendered by :class:`ManagedDataTable`."""
 
     key: str
-    cells: tuple[Any, ...]
+    cells: tuple[str, ...]
     data: Any = None
 
 
@@ -90,7 +91,8 @@ class ManagedDataTable(DataTable):
         self._row_data = {row.key: row.data for row in rows}
         keys: list[str] = []
         for row in rows:
-            self.add_row(*row.cells, key=row.key)
+            cells = tuple(_table_cell(value, row.data is None) for value in row.cells)
+            self.add_row(*cells, key=row.key)
             keys.append(row.key)
         target = previous if previous in self._row_data else (keys[0] if keys else None)
         self.selected_key = target
@@ -123,6 +125,23 @@ class ManagedDataTable(DataTable):
             return str(cell_key.row_key.value)
         except Exception:
             return None
+
+
+def _table_cell(value: str, is_group: bool) -> Text:
+    if is_group:
+        return Text(value, style="bold cyan")
+    normalized = value.casefold()
+    if normalized in {"up", "running"}:
+        return Text(value, style="green")
+    if normalized == "down":
+        return Text(value, style="red")
+    if normalized == "unknown":
+        return Text(value, style="yellow")
+    if normalized.startswith("exited ("):
+        code = normalized.removeprefix("exited (").removesuffix(")")
+        style = "grey70 on grey23" if code == "0" else "bold red on grey23"
+        return Text(value, style=style)
+    return Text(value)
 
 
 class CommonApp(App):
