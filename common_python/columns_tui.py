@@ -108,7 +108,9 @@ def _command(raw: Mapping[str, Any]) -> Command:
     raise ValueError("define exactly one of command or shell")
 
 
-def parse_rows(output: str, output_format: str) -> tuple[ColumnarRow, ...]:
+def parse_rows(
+    output: str, output_format: str, columns: Sequence[Mapping[str, Any]] = ()
+) -> tuple[ColumnarRow, ...]:
     values = (
         json.loads(output)
         if output_format == "json"
@@ -120,11 +122,32 @@ def parse_rows(output: str, output_format: str) -> tuple[ColumnarRow, ...]:
     for index, value in enumerate(values):
         if not isinstance(value, Mapping):
             raise ValueError("source rows must be objects")
-        text = {str(key): str(item) for key, item in value.items()}
+        source = {str(key): str(item) for key, item in value.items()}
+        text, styles = _format_columns(source, columns)
         rows.append(
-            ColumnarRow(text.get("ID", text.get("id", str(index))), text, value)
+            ColumnarRow(
+                source.get("ID", source.get("id", str(index))),
+                text,
+                value,
+                styles=styles,
+            )
         )
     return tuple(rows)
+
+
+def _format_columns(
+    source: Mapping[str, str], columns: Sequence[Mapping[str, Any]]
+) -> tuple[dict[str, str], dict[str, str]]:
+    if not columns:
+        return dict(source), {}
+    values, styles = {}, {}
+    for column in columns:
+        name = str(column["name"])
+        values[name] = str(column.get("format", "{" + name + "}")).format_map(source)
+        color = column.get("color")
+        if isinstance(color, str):
+            styles[name] = color.format_map(source)
+    return values, styles
 
 
 class ActionOutput(ModalScreen[None]):
@@ -166,7 +189,9 @@ class ColumnsTui(App[None]):
     @work(thread=True, exclusive=True)
     def _refresh(self) -> None:
         try:
-            rows = parse_rows(self.config.source.run(), self.config.source_format)
+            rows = parse_rows(
+                self.config.source.run(), self.config.source_format, self.config.columns
+            )
         except Exception as error:
             self.call_from_thread(self.notify, str(error), severity="error")
         else:

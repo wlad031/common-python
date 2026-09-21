@@ -48,6 +48,7 @@ class TableRow:
     key: str
     values: Mapping[str, str]
     data: Any = None
+    styles: Mapping[str, str] | None = None
 
 
 def configured_table_columns(
@@ -175,7 +176,11 @@ class ManagedDataTable(DataTable):
         keys: list[str] = []
         for row in rows:
             cells = tuple(
-                _table_cell(row.values.get(column.key, ""), row.data is None)
+                _table_cell(
+                    row.values.get(column.key, ""),
+                    row.data is None,
+                    (row.styles or {}).get(column.key),
+                )
                 for column in self._columns
             )
             self.add_row(*cells, key=row.key)
@@ -213,7 +218,9 @@ class ManagedDataTable(DataTable):
             return None
 
 
-def _table_cell(value: str, is_group: bool) -> Text:
+def _table_cell(value: str, is_group: bool, style: str | None = None) -> Text:
+    if style:
+        return Text(value, style=style)
     if is_group:
         return Text(value, style="bold cyan")
     normalized = value.casefold()

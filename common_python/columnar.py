@@ -18,9 +18,10 @@ class ColumnarRow:
     data: Any = None
     filters: Mapping[str, str] = field(default_factory=dict)
     sort_values: Mapping[str, Any] = field(default_factory=dict)
+    styles: Mapping[str, str] = field(default_factory=dict)
 
     def as_table_row(self) -> TableRow:
-        return TableRow(self.key, self.values, self.data)
+        return TableRow(self.key, self.values, self.data, self.styles)
 
 
 @dataclass
