@@ -31,8 +31,22 @@ class TableRow:
 
 
 class ManagedDataTable(DataTable):
-    """DataTable with stable selection, row payloads, and j/k navigation."""
+    """DataTable with Gatus-style presentation and stable keyboard selection."""
 
+    DEFAULT_CSS = """
+    ManagedDataTable { height: 1fr; background: transparent; }
+    ManagedDataTable > .datatable--header {
+        color: magenta;
+        text-style: bold;
+        background: transparent;
+    }
+    ManagedDataTable > .datatable--cursor,
+    ManagedDataTable:focus > .datatable--cursor {
+        background: #202020;
+        color: #eeeeee;
+        text-style: none;
+    }
+    """
     BINDINGS = [
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
@@ -133,6 +147,19 @@ class CommonApp(App):
 
     def refresh_data(self) -> None:
         """Override in app-specific shell."""
+
+
+class CommonTableApp(CommonApp):
+    """Common ANSI terminal theme for apps built around ManagedDataTable."""
+
+    CSS = """
+    Screen { background: ansi_default; }
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("ansi_color", True)
+        super().__init__(*args, **kwargs)
+        self.theme = "ansi-dark"
 
 
 class ConfirmDialog(ModalScreen[bool]):
