@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import shlex
 import subprocess
@@ -27,6 +28,7 @@ from .textual import MANAGED_TABLE_CSS, ManagedDataTable
 class Command:
     argv: tuple[str, ...] | None = None
     shell: str | None = None
+    timeout: float | None = None
 
     def run(self, values: Mapping[str, str] | None = None) -> str:
         if self.argv is not None:
@@ -40,6 +42,7 @@ class Command:
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=self.timeout,
             ).stdout
         assert self.shell is not None
         quoted = {key: shlex.quote(value) for key, value in (values or {}).items()}
@@ -49,6 +52,7 @@ class Command:
             check=True,
             text=True,
             capture_output=True,
+            timeout=self.timeout,
         ).stdout
 
 
@@ -101,21 +105,25 @@ def load_columns_config(path: str | Path) -> ColumnsConfig:
 def _command(raw: Mapping[str, Any]) -> Command:
     command = raw.get("command")
     shell = raw.get("shell")
+    timeout = raw.get("timeout")
+    if timeout is not None:
+        timeout = float(timeout)
     if isinstance(command, Sequence) and not isinstance(command, str) and not shell:
-        return Command(tuple(str(part) for part in command))
+        return Command(tuple(str(part) for part in command), timeout=timeout)
     if isinstance(shell, str) and not command:
-        return Command(shell=shell)
+        return Command(shell=shell, timeout=timeout)
     raise ValueError("define exactly one of command or shell")
 
 
 def parse_rows(
     output: str, output_format: str, columns: Sequence[Mapping[str, Any]] = ()
 ) -> tuple[ColumnarRow, ...]:
-    values = (
-        json.loads(output)
-        if output_format == "json"
-        else [json.loads(line) for line in output.splitlines() if line]
-    )
+    if output_format == "text":
+        values = [{"output": line} for line in output.splitlines() if line]
+    elif output_format == "json":
+        values = json.loads(output)
+    else:
+        values = [json.loads(line) for line in output.splitlines() if line]
     if not isinstance(values, list):
         raise ValueError("source JSON must be array")
     rows = []
@@ -223,16 +231,49 @@ class ColumnsTui(App[None]):
     def _show_rows(self, rows: tuple[ColumnarRow, ...]) -> None:
         self.rows = rows
         table = self.query_one("#table", ManagedDataTable)
-        table.set_configured_rows(
-            ColumnarState().visible_rows(rows), {"columns": list(self.config.columns)}
-        )
+        config = {"columns": list(self.config.columns)} if self.config.columns else {}
+        table.set_configured_rows(ColumnarState().visible_rows(rows), config)
         self.query_one("#summary", Static).update(f"{len(rows)} rows")
 
 
-def main(argv: Sequence[str] | None = None) -> None:
-    import argparse
+def run(
+    command: Sequence[str], output_format: str, watch: float, timeout: float
+) -> None:
+    """Run table TUI from command output."""
+    config = ColumnsConfig(
+        source=Command(tuple(command), timeout=timeout),
+        source_format=output_format,
+        watch=watch,
+        columns=(),
+        actions={},
+    )
+    ColumnsTui(config).run()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True)
-    args = parser.parse_args(argv)
-    ColumnsTui(load_columns_config(args.config)).run()
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="table-tui")
+    commands = parser.add_subparsers(dest="command", required=True)
+    run_parser = commands.add_parser("run", help="run table from command output")
+    run_parser.add_argument(
+        "--format",
+        choices=("json", "jsonl", "text"),
+        default="text",
+        dest="output_format",
+    )
+    run_parser.add_argument("--watch", type=float, default=2)
+    run_parser.add_argument(
+        "--timeout", type=float, default=5, help="source command timeout in seconds"
+    )
+    run_parser.add_argument("source_command", nargs=argparse.REMAINDER)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    if args.command == "run":
+        source_command = args.source_command
+        if source_command[:1] == ["--"]:
+            source_command = source_command[1:]
+        if not source_command:
+            build_parser().error("run requires command after '--'")
+        run(source_command, args.output_format, args.watch, args.timeout)

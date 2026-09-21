@@ -57,6 +57,26 @@ class MyApp(CommonApp):
 - `common_python.web` — optional Flask health, request logging, API-key auth
 - `common_python.lua` — optional Python/Lua table conversion
 - `common_python.textual` — optional Textual shell and dialogs
+- `common_python.columns_tui` — command-backed table TUI
+
+## Table TUI
+
+Install with Textual support, then pass source command directly. Plain text is one
+row per line by default; use `--format jsonl` or `--format json` for structured rows:
+
+```bash
+uv tool install "common-python[textual] @ git+https://github.com/wlad031/common-python.git@v0.5.2"
+table-tui run -- my-command --json
+```
+
+Interactive commands need non-interactive/batch mode. For `top`:
+
+```bash
+table-tui run -- top -b -n 1
+```
+
+Use `--watch SECONDS` to change refresh interval and `--timeout SECONDS` to cap
+source execution. `columns-tui` remains alias for `table-tui`.
 
 ## Development
 
