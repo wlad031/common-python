@@ -59,9 +59,7 @@ def configured_table_columns(
     widths, duplicate keys, and configs hiding every column fail fast.
     """
     definitions = {column.key: column for column in defaults}
-    raw_columns = config.get("columns", [
-        {"key": column.key} for column in defaults
-    ])
+    raw_columns = config.get("columns", [{"key": column.key} for column in defaults])
     if not isinstance(raw_columns, list):
         raise ValueError("columns config must be a list")
 
@@ -79,9 +77,8 @@ def configured_table_columns(
         width = raw.get("width", default.width)
         if not isinstance(visible, bool):
             raise ValueError(f"column visibility must be boolean: {key}")
-        invalid_width = (
-            width is not None
-            and (not isinstance(width, int) or isinstance(width, bool) or width < 1)
+        invalid_width = width is not None and (
+            not isinstance(width, int) or isinstance(width, bool) or width < 1
         )
         if invalid_width:
             raise ValueError(f"column width must be positive integer: {key}")
@@ -91,6 +88,33 @@ def configured_table_columns(
     if not columns:
         raise ValueError("config must enable at least one column")
     return tuple(columns)
+
+
+def inferred_table_columns(
+    config: Mapping[str, Any], field_names: tuple[str, ...]
+) -> tuple[TableColumn, ...]:
+    """Derive table columns from row data and optional ``columns`` config.
+
+    ``name`` identifies source field. ``rename`` changes displayed header.
+    """
+    defaults = tuple(
+        TableColumn(name, name.replace("_", " ").title()) for name in field_names
+    )
+    raw_columns = config.get("columns")
+    if raw_columns is None:
+        return defaults
+    if not isinstance(raw_columns, list):
+        raise ValueError("columns config must be a list")
+    normalized = []
+    for item in raw_columns:
+        if not isinstance(item, Mapping) or not isinstance(item.get("name"), str):
+            raise ValueError(f"invalid column config: {item!r}")
+        item = dict(item)
+        item["key"] = item.pop("name")
+        if "rename" in item:
+            item["label"] = item.pop("rename")
+        normalized.append(item)
+    return configured_table_columns({"columns": normalized}, defaults)
 
 
 class ManagedDataTable(DataTable):
@@ -132,6 +156,16 @@ class ManagedDataTable(DataTable):
         self._columns = columns
         for column in columns:
             self.add_column(column.label, key=column.key, width=column.width)
+
+    def set_configured_rows(
+        self, rows: tuple[TableRow, ...], config: Mapping[str, Any]
+    ) -> None:
+        """Infer/configure columns from row field names, then render rows."""
+        if rows:
+            columns = inferred_table_columns(config, tuple(rows[0].values))
+            if columns != self._columns:
+                self.set_columns(columns)
+        self.set_rows(rows)
 
     def set_rows(self, rows: tuple[TableRow, ...]) -> None:
         """Replace rows while retaining highlighted row by stable key."""

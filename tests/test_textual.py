@@ -8,6 +8,7 @@ from common_python.textual import (
     TableRow,
     _table_cell,
     configured_table_columns,
+    inferred_table_columns,
 )
 
 
@@ -37,6 +38,16 @@ class ConfiguredTableColumnsTests(unittest.TestCase):
         self.assertEqual(
             columns,
             (TableColumn("state", "Status", 10), TableColumn("name", "Name")),
+        )
+
+    def test_inferrs_columns_and_uses_name_and_rename_config(self) -> None:
+        columns = inferred_table_columns(
+            {"columns": [{"name": "ports", "rename": "Ports"}, {"name": "name"}]},
+            ("name", "status", "ports"),
+        )
+        self.assertEqual(
+            columns,
+            (TableColumn("ports", "Ports"), TableColumn("name", "Name")),
         )
 
     def test_rejects_invalid_or_empty_column_config(self) -> None:
