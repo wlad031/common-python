@@ -12,10 +12,6 @@ authors = [{ name = "Vladislav Gerasimov", email = "me@vgerasimov.dev" }]
 license = { text = "MIT" }
 classifiers = ["Programming Language :: Python :: 3"]
 
-[project.scripts]
-table-tui = "common_python.columns_tui:main"
-columns-tui = "common_python.columns_tui:main"
-
 [project.optional-dependencies]
 config = ["PyYAML>=6"]
 flask = ["Flask>=3.1"]
